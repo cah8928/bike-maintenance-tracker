@@ -534,11 +534,20 @@
                 const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,apparent_temperature_max,relativehumidity_2m_mean,precipitation_probability_max,windspeed_10m_max,sunrise,sunset&hourly=temperature_2m,apparent_temperature,weathercode&temperature_unit=fahrenheit&windspeed_unit=mph&timezone=auto&forecast_days=7`;
                 const weatherR = await fetch(weatherUrl);
                 const weatherD = await weatherR.json();
+
+                // **FIX:** Validate the API response before trying to use it.
+                if (weatherD.error) {
+                    throw new Error(weatherD.reason || 'The weather service returned an error.');
+                }
+                if (!weatherD.daily || !weatherD.hourly) {
+                    throw new Error('Received invalid or incomplete data from the weather service.');
+                }
+
                 renderWeather(weatherD);
                 renderHourlyChart(weatherD.hourly);
             } catch (error) {
                 console.error("Weather fetch error:", error);
-                forecastContainer.innerHTML = `<p class="col-span-full text-red-400">Error: ${error.message}.</p>`;
+                forecastContainer.innerHTML = `<p class="col-span-full text-red-400">Error: ${error.message}</p>`;
             }
         };
 
