@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VeloTrack: Bike Maintenance Hub</title>
+    <title>VeloTrack: Bike & Weather Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -27,6 +27,12 @@
         .modal.is-open {
             display: flex;
         }
+        /* Custom styles for segmented progress bars */
+        .progress-segment {
+            background-color: #4a5568; /* gray-600 */
+            border-radius: 3px;
+            transition: background-color 0.3s ease;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 font-sans antialiased">
@@ -35,18 +41,23 @@
     <div id="app-container" class="container mx-auto p-4 md:p-6 lg:p-8">
 
         <!-- Header -->
-        <header class="flex flex-col sm:flex-row justify-between items-center mb-8 pb-4 border-b border-gray-700">
+        <header class="flex flex-col sm:flex-row justify-between items-center mb-6 pb-4 border-b border-gray-700">
             <h1 class="text-3xl md:text-4xl font-bold text-white mb-4 sm:mb-0">
                 Velo<span class="text-cyan-400">Track</span>
             </h1>
-            <button id="add-bike-btn" class="w-full sm:w-auto bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
-                + Add New Bike
-            </button>
+            <div class="flex gap-2">
+                 <button id="preferences-btn" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                    Preferences
+                </button>
+                <button id="add-bike-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                    + Add New Bike
+                </button>
+            </div>
         </header>
 
         <!-- Weather Section -->
         <section id="weather-section" class="mb-8 p-6 bg-gray-800 rounded-lg shadow-xl">
-            <h2 class="text-2xl font-semibold mb-4 text-white">Best & Worst Days to Ride</h2>
+            <h2 class="text-2xl font-semibold mb-4 text-white">Ride Forecast & Planner</h2>
             <div class="flex flex-col sm:flex-row gap-4 mb-4">
                 <input type="text" id="city-input" placeholder="Enter City Name" class="flex-grow bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500">
                 <div class="flex gap-4">
@@ -54,9 +65,21 @@
                     <button id="use-location-btn" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition">Use My Location</button>
                 </div>
             </div>
-            <div id="weather-forecast" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-4 text-center">
-                <!-- Weather data will be injected here -->
+             <!-- Clothing Advice -->
+            <div id="clothing-advice-container" class="mb-6 p-4 bg-gray-900 rounded-lg hidden">
+                <h3 class="text-lg font-semibold text-cyan-400">Today's Clothing Advice</h3>
+                <p id="clothing-advice-text" class="text-gray-300"></p>
+            </div>
+            <!-- 7-Day Forecast -->
+            <div id="weather-forecast" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 text-center mb-8">
                 <p class="col-span-full text-gray-400">Enter a city or use your location to get a 7-day ride forecast.</p>
+            </div>
+            <!-- 48-Hour Graph -->
+            <div id="hourly-forecast-container" class="mt-4 hidden">
+                <h3 class="text-xl font-semibold mb-4 text-white">Next 48 Hours</h3>
+                <div class="bg-gray-900 p-4 rounded-lg">
+                    <canvas id="hourly-chart"></canvas>
+                </div>
             </div>
         </section>
 
@@ -74,6 +97,51 @@
     </div>
 
     <!-- MODALS -->
+    
+    <!-- Preferences Modal -->
+    <div id="preferences-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-start justify-center z-50 overflow-y-auto pt-10">
+        <div class="bg-gray-800 rounded-lg shadow-2xl p-8 w-11/12 md:w-2/3 lg:w-1/2">
+            <h2 class="text-2xl font-bold mb-6">Preferences & Profiles</h2>
+            
+            <!-- Optimal Weather Preferences -->
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold text-cyan-400 mb-4 border-b border-gray-700 pb-2">Optimal Ride Weather</h3>
+                <form id="weather-prefs-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="pref-temp-min" class="block text-sm font-medium text-gray-300 mb-1">Min Temp (°F)</label>
+                        <input type="number" id="pref-temp-min" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2">
+                    </div>
+                    <div>
+                        <label for="pref-temp-max" class="block text-sm font-medium text-gray-300 mb-1">Max Temp (°F)</label>
+                        <input type="number" id="pref-temp-max" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2">
+                    </div>
+                    <div>
+                        <label for="pref-wind-max" class="block text-sm font-medium text-gray-300 mb-1">Max Wind (mph)</label>
+                        <input type="number" id="pref-wind-max" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2">
+                    </div>
+                    <div>
+                        <label for="pref-precip-max" class="block text-sm font-medium text-gray-300 mb-1">Max Precip. Prob. (%)</label>
+                        <input type="number" id="pref-precip-max" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg p-2">
+                    </div>
+                </form>
+            </div>
+
+            <!-- Clothing Profiles -->
+            <div>
+                 <h3 class="text-xl font-semibold text-cyan-400 mb-4 border-b border-gray-700 pb-2">Clothing Profiles</h3>
+                 <div id="clothing-profiles-list" class="space-y-3 mb-4">
+                     <!-- Clothing profiles will be injected here -->
+                 </div>
+                 <button id="add-clothing-profile-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">+ Add New Clothing Profile</button>
+            </div>
+
+            <div class="mt-8 flex justify-end gap-4">
+                <button type="button" class="modal-close-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition">Close</button>
+                <button id="save-preferences-btn" type="button" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg transition">Save & Close</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- Add/Edit Bike Modal -->
     <div id="bike-modal" class="modal fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50">
@@ -103,16 +171,17 @@
                     <label for="component-type-select" class="block text-sm font-medium text-gray-300 mb-1">Component</label>
                     <select id="component-type-select" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"></select>
                 </div>
-                 <div id="chain-type-container" class="mb-4 hidden">
-                    <label for="chain-type-select" class="block text-sm font-medium text-gray-300 mb-1">Chain Type</label>
-                    <select id="chain-type-select" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                        <option value="Lubed">Lubed</option>
-                        <option value="Waxed">Waxed</option>
-                    </select>
-                </div>
-                <div id="lifespan-container" class="mb-4">
-                    <label for="component-lifespan-input" class="block text-sm font-medium text-gray-300 mb-1">Service Interval / Lifespan (in miles)</label>
-                    <input type="number" id="component-lifespan-input" placeholder="e.g., 2000" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-cyan-500" required>
+                <div id="lifespan-container" class="space-y-4">
+                    <div class="mb-4">
+                        <label for="component-service-interval-input" class="block text-sm font-medium text-gray-300 mb-1">Service Interval (miles)</label>
+                        <input type="number" id="component-service-interval-input" placeholder="e.g., 200" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2" required>
+                        <p class="text-xs text-gray-400 mt-1">Mileage between routine maintenance (e.g., cleaning, lubing).</p>
+                    </div>
+                     <div class="mb-4">
+                        <label for="component-total-lifespan-input" class="block text-sm font-medium text-gray-300 mb-1">Total Lifespan (miles)</label>
+                        <input type="number" id="component-total-lifespan-input" placeholder="e.g., 2000" class="w-full bg-gray-700 text-white border border-gray-600 rounded-lg px-4 py-2" required>
+                        <p class="text-xs text-gray-400 mt-1">Expected mileage before the component needs replacement.</p>
+                    </div>
                 </div>
                 <div class="mt-8 flex justify-end gap-4">
                     <button type="button" class="modal-close-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition">Cancel</button>
@@ -157,7 +226,7 @@
         <div class="bg-gray-800 rounded-lg shadow-2xl p-8 w-11/12 md:w-2/3 lg:w-1/2">
             <h2 id="component-details-title" class="text-2xl font-bold mb-6">Component Details</h2>
             <div class="mb-6">
-                <h3 class="text-lg font-semibold text-gray-300 mb-2">Current Interval Wear</h3>
+                <h3 class="text-lg font-semibold text-gray-300 mb-2">Maintenance Wear Since Last Service</h3>
                 <div class="bg-gray-700 p-4 rounded-lg">
                     <canvas id="wear-chart"></canvas>
                 </div>
@@ -186,113 +255,82 @@
             </div>
         </div>
     </div>
-
-      <!-- (Your body HTML ends here) -->
     
     <script>
-    // WRAP EVERYTHING in this DOMContentLoaded listener
     document.addEventListener('DOMContentLoaded', function() {
 
         // --- APPLICATION STATE & CONFIG --- //
 
         let state = {
-            bikes: []
+            bikes: [],
+            userPreferences: {
+                tempMin: 55,
+                tempMax: 85,
+                windMax: 15,
+                precipMax: 20
+            },
+            clothingProfiles: [
+                { id: 'p1', name: 'Cold', minTemp: -20, maxTemp: 45, items: 'Heavy jacket, thermal bibs, base layer, gloves, shoe covers.', color: 'border-blue-500' },
+                { id: 'p2', name: 'Cool', minTemp: 46, maxTemp: 60, items: 'Jacket/gilet, bib shorts, arm/leg warmers.', color: 'border-cyan-500' },
+                { id: 'p3', name: 'Mild', minTemp: 61, maxTemp: 75, items: 'Standard jersey and bib shorts. Maybe a base layer.', color: 'border-green-500' },
+                { id: 'p4', name: 'Warm', minTemp: 76, maxTemp: 120, items: 'Lightweight jersey and bib shorts.', color: 'border-yellow-500' }
+            ]
         };
         
-        const wearMultipliers = {
-            'Dry': 1,
-            'Damp/Mixed': 1.5,
-            'Wet': 2
-        };
+        const wearMultipliers = { 'Dry': 1, 'Damp/Mixed': 1.5, 'Wet': 2 };
 
         const initialComponents = [
-            { name: "Chain", type: "drivetrain", defaultLifespan: 2000, hasSubtype: true },
-            { name: "Cassette", type: "drivetrain", defaultLifespan: 4000 },
-            { name: "Chainrings", type: "drivetrain", defaultLifespan: 8000 },
-            { name: "Brake Pads (Front)", type: "brakes", defaultLifespan: 3000 },
-            { name: "Brake Pads (Rear)", type: "brakes", defaultLifespan: 3000 },
-            { name: "Brake Cable/Fluid Service", type: "brakes", defaultLifespan: 5000 },
-            { name: "Tire (Front)", type: "wheels", defaultLifespan: 2500 },
-            { name: "Tire (Rear)", type: "wheels", defaultLifespan: 2500 },
-            { name: "Shoe Cleats", type: "contact", defaultLifespan: 3000 },
-            { name: "Full Bike Wash", type: "general", defaultLifespan: 200 },
-            { name: "Power Meter Battery", type: "electronics", isBattery: true },
-            { name: "Shifting Battery", type: "electronics", isBattery: true },
+            { name: "Chain", defaultService: 200, defaultLifespan: 2000 },
+            { name: "Cassette", defaultService: 4000, defaultLifespan: 8000 },
+            { name: "Tires", defaultService: 2500, defaultLifespan: 2500 },
+            { name: "Brake Pads", defaultService: 3000, defaultLifespan: 3000 },
+            { name: "Sealant", defaultService: 180, defaultLifespan: 180 }, // Days, handled differently
+            { name: "Cables/Housing", defaultService: 5000, defaultLifespan: 10000 },
+            { name: "Full Bike Wash", defaultService: 200, defaultLifespan: 200 },
         ];
 
         let wearChart = null;
+        let hourlyChart = null;
 
         // --- DOM ELEMENTS --- //
-
         const bikeList = document.getElementById('bike-list');
         const noBikesMessage = document.getElementById('no-bikes-message');
-        
-        // Modals
-        const bikeModal = document.getElementById('bike-modal');
-        const componentModal = document.getElementById('component-modal');
-        const rideModal = document.getElementById('ride-modal');
-        const componentDetailsModal = document.getElementById('component-details-modal');
-        const notificationModal = document.getElementById('notification-modal');
-        
-        // Forms & Inputs
-        const bikeForm = document.getElementById('bike-form');
-        const bikeIdInput = document.getElementById('bike-id-input');
-        const bikeNameInput = document.getElementById('bike-name-input');
-        const bikeModalTitle = document.getElementById('bike-modal-title');
+        const bikeModal = document.getElementById('bike-modal'), componentModal = document.getElementById('component-modal'), rideModal = document.getElementById('ride-modal'), componentDetailsModal = document.getElementById('component-details-modal'), notificationModal = document.getElementById('notification-modal'), preferencesModal = document.getElementById('preferences-modal');
+        const bikeForm = document.getElementById('bike-form'), bikeIdInput = document.getElementById('bike-id-input'), bikeNameInput = document.getElementById('bike-name-input'), bikeModalTitle = document.getElementById('bike-modal-title');
+        const componentForm = document.getElementById('component-form'), componentBikeIdInput = document.getElementById('component-bike-id'), componentTypeSelect = document.getElementById('component-type-select'), componentServiceIntervalInput = document.getElementById('component-service-interval-input'), componentTotalLifespanInput = document.getElementById('component-total-lifespan-input');
+        const rideForm = document.getElementById('ride-form'), rideBikeIdInput = document.getElementById('ride-bike-id'), rideDistanceInput = document.getElementById('ride-distance-input'), rideDateInput = document.getElementById('ride-date-input'), rideConditionsSelect = document.getElementById('ride-conditions-select');
+        const clothingProfilesList = document.getElementById('clothing-profiles-list');
 
-        const componentForm = document.getElementById('component-form');
-        const componentBikeIdInput = document.getElementById('component-bike-id');
-        const componentTypeSelect = document.getElementById('component-type-select');
-        const chainTypeContainer = document.getElementById('chain-type-container');
-        const chainTypeSelect = document.getElementById('chain-type-select');
-        const componentLifespanInput = document.getElementById('component-lifespan-input');
-        const lifespanContainer = document.getElementById('lifespan-container');
-        
-        const rideForm = document.getElementById('ride-form');
-        const rideBikeIdInput = document.getElementById('ride-bike-id');
-        const rideDistanceInput = document.getElementById('ride-distance-input');
-        const rideDateInput = document.getElementById('ride-date-input');
-        const rideConditionsSelect = document.getElementById('ride-conditions-select');
-        
         // --- DATA PERSISTENCE --- //
-        
-        const saveState = () => {
-            try {
-                localStorage.setItem('veloTrackState', JSON.stringify(state));
-            } catch (e) {
-                console.error("Error saving state to localStorage", e);
-            }
-        };
-
+        const saveState = () => localStorage.setItem('veloTrackState', JSON.stringify(state));
         const loadState = () => {
-            try {
-                const savedState = localStorage.getItem('veloTrackState');
-                if (savedState) {
-                    state = JSON.parse(savedState);
-                    // Ensure nested objects that might have been added later exist
-                    state.bikes.forEach(bike => {
-                        if (!bike.cleaning) {
-                           bike.cleaning = { frame: false, drivetrain: false, wheels: false, brakes: false, cockpit: false };
+            const savedState = localStorage.getItem('veloTrackState');
+            if (savedState) {
+                const loaded = JSON.parse(savedState);
+                state = { ...state, ...loaded }; // Merge defaults with loaded state
+                // Backwards compatibility check for new component structure
+                state.bikes.forEach(bike => {
+                    (bike.components || []).forEach(c => {
+                        if (c.wear !== undefined && c.maintenanceWear === undefined) {
+                            c.maintenanceWear = c.wear;
+                            c.serviceInterval = c.lifespan;
+                            c.totalWear = c.wear; // Best guess
+                            c.totalLifespan = c.lifespan * 2; // Best guess
+                            delete c.wear;
+                            delete c.lifespan;
                         }
                     });
-                }
-            } catch (e) {
-                console.error("Error loading state from localStorage", e);
-                state = { bikes: [] }; // Reset to a safe default
+                });
             }
         };
 
-        // --- UTILITY FUNCTIONS --- //
-
+        // --- UTILITY & RENDER FUNCTIONS --- //
         const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
-        
         const openModal = (modal) => modal.classList.add('is-open');
         const closeModal = (modal) => modal.classList.remove('is-open');
-        
         const formatDate = (dateString) => new Date(dateString).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        const formatTime = (isoString) => new Date(isoString).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
-        // --- RENDER FUNCTIONS --- //
-        
         const render = () => {
             bikeList.innerHTML = '';
             if (state.bikes.length === 0) {
@@ -301,18 +339,15 @@
             } else {
                 noBikesMessage.style.display = 'none';
                 bikeList.style.display = 'grid';
-                state.bikes.forEach(bike => {
-                    const bikeCard = createBikeCard(bike);
-                    bikeList.appendChild(bikeCard);
-                });
+                state.bikes.forEach(bike => bikeList.appendChild(createBikeCard(bike)));
             }
+            renderPreferences();
         };
-        
+
         const createBikeCard = (bike) => {
             const card = document.createElement('div');
-            card.className = 'bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col gap-4';
+            card.className = 'bg-gray-800 rounded-lg shadow-xl p-6 flex flex-col gap-6';
             card.dataset.bikeId = bike.id;
-
             card.innerHTML = `
                 <div class="flex justify-between items-start">
                     <div>
@@ -324,476 +359,335 @@
                         <button class="delete-bike-btn bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-3 rounded-lg text-sm" data-bike-id="${bike.id}">Delete</button>
                     </div>
                 </div>
-
                 <div>
                     <h3 class="text-lg font-semibold border-b border-gray-700 pb-2 mb-3">Components</h3>
-                    <div class="component-list space-y-3">
-                        <!-- Components will be rendered here -->
-                    </div>
+                    <div class="component-list space-y-4"></div>
                     <button class="add-component-btn mt-4 text-cyan-400 hover:text-cyan-300 w-full text-left font-semibold text-sm" data-bike-id="${bike.id}">+ Add Component</button>
-                </div>
-                
-                <div>
-                    <h3 class="text-lg font-semibold border-b border-gray-700 pb-2 mb-3">Cleaning Status</h3>
-                    <div class="cleaning-checklist grid grid-cols-2 gap-2 text-sm">
-                        ${['Frame', 'Drivetrain', 'Wheels', 'Brakes', 'Cockpit'].map(item => `
-                            <label class="flex items-center space-x-2 cursor-pointer">
-                                <input type="checkbox" class="cleaning-checkbox form-checkbox bg-gray-700 border-gray-600 rounded text-cyan-500 focus:ring-cyan-500" data-item="${item.toLowerCase()}" ${bike.cleaning[item.toLowerCase()] ? 'checked' : ''}>
-                                <span>${item}</span>
-                            </label>
-                        `).join('')}
-                    </div>
-                    <button class="reset-cleaning-btn mt-3 text-gray-400 hover:text-white text-xs w-full text-left" data-bike-id="${bike.id}">Reset All</button>
-                </div>
-            `;
-
+                </div>`;
             const componentListContainer = card.querySelector('.component-list');
             if (bike.components && bike.components.length > 0) {
-                bike.components.forEach(component => {
-                    componentListContainer.appendChild(createComponentItem(component, bike.id));
-                });
+                bike.components.forEach(c => componentListContainer.appendChild(createComponentItem(c, bike.id)));
             } else {
                 componentListContainer.innerHTML = `<p class="text-sm text-gray-400">No components added yet.</p>`;
             }
-            
             return card;
+        };
+
+        const createProgressBarHTML = (percentage) => {
+            let color = 'bg-green-500';
+            if (percentage > 85) color = 'bg-red-500';
+            else if (percentage > 60) color = 'bg-yellow-500';
+            
+            const filledSegments = Math.round(percentage / 10);
+            let segmentsHTML = '';
+            for (let i = 0; i < 10; i++) {
+                segmentsHTML += `<div class="progress-segment h-2 flex-1 ${i < filledSegments ? color : ''}"></div>`;
+            }
+            return `<div class="w-full flex gap-1">${segmentsHTML}</div>`;
         };
 
         const createComponentItem = (component, bikeId) => {
             const item = document.createElement('div');
             item.className = 'component-item';
             
-            let display;
-            if (component.isBattery) {
-                const daysSince = component.lastServiceDate ? Math.floor((new Date() - new Date(component.lastServiceDate)) / (1000 * 60 * 60 * 24)) : 'N/A';
-                display = `
-                    <div class="flex justify-between items-center text-sm">
-                        <span class="font-semibold text-gray-300">${component.name}</span>
-                        <span class="text-gray-400">Charged ${daysSince} days ago</span>
-                    </div>
-                `;
-            } else {
-                const wearPercentage = Math.min(100, (component.wear / component.lifespan) * 100);
-                let progressBarColor = 'bg-green-500';
-                if (wearPercentage > 80) progressBarColor = 'bg-red-500';
-                else if (wearPercentage > 60) progressBarColor = 'bg-yellow-500';
-
-                display = `
-                    <div class="flex justify-between items-center text-xs mb-1">
-                        <span class="font-semibold text-gray-300 component-details-btn cursor-pointer hover:text-cyan-400" data-component-id="${component.id}" data-bike-id="${bikeId}">${component.name}</span>
-                        <span class="text-gray-400">${Math.round(component.wear)} / ${component.lifespan} mi</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-2.5">
-                        <div class="${progressBarColor} h-2.5 rounded-full" style="width: ${wearPercentage}%"></div>
-                    </div>
-                `;
-            }
+            const maintenancePerc = Math.min(100, (component.maintenanceWear / component.serviceInterval) * 100);
+            const lifePerc = Math.min(100, (component.totalWear / component.totalLifespan) * 100);
 
             item.innerHTML = `
                 <div class="flex items-center gap-3">
-                    <div class="flex-grow">${display}</div>
-                    <button class="service-reset-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-2 rounded-md text-xs" data-component-id="${component.id}" data-bike-id="${bikeId}">
-                        ${component.isBattery ? 'Charged' : 'Service'}
-                    </button>
-                </div>
-            `;
+                    <div class="flex-grow space-y-2">
+                        <div class="flex justify-between items-center">
+                             <span class="font-semibold text-gray-300 component-details-btn cursor-pointer hover:text-cyan-400" data-component-id="${component.id}" data-bike-id="${bikeId}">${component.name}</span>
+                             <button class="service-reset-btn bg-gray-600 hover:bg-gray-500 text-white font-bold py-1 px-2 rounded-md text-xs" data-component-id="${component.id}" data-bike-id="${bikeId}">Service</button>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-400">Maintenance</span>
+                                <span>${Math.round(component.maintenanceWear)} / ${component.serviceInterval} mi</span>
+                            </div>
+                            ${createProgressBarHTML(maintenancePerc)}
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-gray-400">Life</span>
+                                <span>${Math.round(component.totalWear)} / ${component.totalLifespan} mi</span>
+                            </div>
+                            ${createProgressBarHTML(lifePerc)}
+                        </div>
+                    </div>
+                </div>`;
             return item;
         };
 
         // --- EVENT HANDLERS --- //
-
-        const handleAddBikeClick = () => {
-            bikeForm.reset();
-            bikeIdInput.value = '';
-            bikeModalTitle.textContent = 'Add a New Bike';
-            openModal(bikeModal);
-        };
-
+        const handleAddBikeClick = () => { bikeForm.reset(); bikeIdInput.value = ''; bikeModalTitle.textContent = 'Add a New Bike'; openModal(bikeModal); };
         const handleBikeFormSubmit = (e) => {
             e.preventDefault();
             const bikeId = bikeIdInput.value;
             const bikeName = bikeNameInput.value.trim();
             if (!bikeName) return;
-
-            if (bikeId) { // Editing existing bike
+            if (bikeId) {
                 const bike = state.bikes.find(b => b.id === bikeId);
                 if (bike) bike.name = bikeName;
-            } else { // Adding new bike
-                const newBike = {
-                    id: generateId(),
-                    name: bikeName,
-                    components: [],
-                    rides: [],
-                    cleaning: { frame: false, drivetrain: false, wheels: false, brakes: false, cockpit: false }
-                };
-                state.bikes.push(newBike);
+            } else {
+                state.bikes.push({ id: generateId(), name: bikeName, components: [], rides: [] });
             }
-            
-            saveState();
-            render();
-            closeModal(bikeModal);
+            saveState(); render(); closeModal(bikeModal);
         };
-        
         const handleBikeListClick = (e) => {
-            const target = e.target;
-            const bikeId = target.closest('[data-bike-id]')?.dataset.bikeId;
+            const bikeId = e.target.closest('[data-bike-id]')?.dataset.bikeId;
             if (!bikeId) return;
-
-            if (target.classList.contains('edit-bike-btn')) {
+            const classList = e.target.classList;
+            if (classList.contains('edit-bike-btn')) {
                 const bike = state.bikes.find(b => b.id === bikeId);
-                if (bike) {
-                    bikeModalTitle.textContent = 'Edit Bike Name';
-                    bikeIdInput.value = bike.id;
-                    bikeNameInput.value = bike.name;
-                    openModal(bikeModal);
-                }
-            } else if (target.classList.contains('delete-bike-btn')) {
-                if (confirm('Are you sure you want to delete this bike and all its data?')) {
-                    state.bikes = state.bikes.filter(b => b.id !== bikeId);
-                    saveState();
-                    render();
-                }
-            } else if (target.classList.contains('add-component-btn')) {
-                componentBikeIdInput.value = bikeId;
-                componentForm.reset();
-                populateComponentSelect(bikeId);
-                handleComponentTypeChange();
-                openModal(componentModal);
-            } else if (target.classList.contains('log-ride-btn')) {
-                rideBikeIdInput.value = bikeId;
-                rideForm.reset();
-                rideDateInput.value = new Date().toISOString().split('T')[0]; // Set today's date
-                openModal(rideModal);
-            } else if (target.classList.contains('service-reset-btn')) {
-                const componentId = target.dataset.componentId;
-                serviceComponent(bikeId, componentId);
-            } else if (target.classList.contains('component-details-btn')) {
-                const componentId = target.dataset.componentId;
-                showComponentDetails(bikeId, componentId);
-            } else if (target.classList.contains('reset-cleaning-btn')) {
-                const bike = state.bikes.find(b => b.id === bikeId);
-                if (bike) {
-                    Object.keys(bike.cleaning).forEach(key => bike.cleaning[key] = false);
-                    saveState();
-                    render();
-                }
-            } else if (target.classList.contains('cleaning-checkbox')) {
-                const bike = state.bikes.find(b => b.id === bikeId);
-                const item = target.dataset.item;
-                if (bike) {
-                    bike.cleaning[item] = target.checked;
-                    saveState();
-                    // No need to re-render for a checkbox change
-                }
+                if (bike) { bikeModalTitle.textContent = 'Edit Bike Name'; bikeIdInput.value = bike.id; bikeNameInput.value = bike.name; openModal(bikeModal); }
+            } else if (classList.contains('delete-bike-btn')) {
+                if (confirm('Are you sure? This will delete the bike and all its data.')) { state.bikes = state.bikes.filter(b => b.id !== bikeId); saveState(); render(); }
+            } else if (classList.contains('add-component-btn')) {
+                componentBikeIdInput.value = bikeId; componentForm.reset(); populateComponentSelect(bikeId); handleComponentTypeChange(); openModal(componentModal);
+            } else if (classList.contains('log-ride-btn')) {
+                rideBikeIdInput.value = bikeId; rideForm.reset(); rideDateInput.value = new Date().toISOString().split('T')[0]; openModal(rideModal);
+            } else if (classList.contains('service-reset-btn')) {
+                serviceComponent(bikeId, e.target.dataset.componentId);
+            } else if (classList.contains('component-details-btn')) {
+                showComponentDetails(bikeId, e.target.dataset.componentId);
             }
         };
-        
         const populateComponentSelect = (bikeId) => {
             const bike = state.bikes.find(b => b.id === bikeId);
-            const existingComponentNames = bike.components.map(c => c.baseName);
+            const existingComponentNames = bike.components.map(c => c.name);
             const availableComponents = initialComponents.filter(ic => !existingComponentNames.includes(ic.name));
-
-            componentTypeSelect.innerHTML = availableComponents
-                .map(c => `<option value="${c.name}">${c.name}</option>`)
-                .join('');
+            componentTypeSelect.innerHTML = availableComponents.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
         };
-        
         const handleComponentTypeChange = () => {
             const selectedName = componentTypeSelect.value;
             const componentInfo = initialComponents.find(c => c.name === selectedName);
             if (!componentInfo) return;
-
-            chainTypeContainer.classList.toggle('hidden', !componentInfo.hasSubtype);
-            lifespanContainer.classList.toggle('hidden', !!componentInfo.isBattery);
-            
-            if (componentInfo.defaultLifespan) {
-                componentLifespanInput.value = componentInfo.defaultLifespan;
-            }
+            componentServiceIntervalInput.value = componentInfo.defaultService;
+            componentTotalLifespanInput.value = componentInfo.defaultLifespan;
         };
-
         const handleComponentFormSubmit = (e) => {
             e.preventDefault();
             const bikeId = componentBikeIdInput.value;
-            const baseName = componentTypeSelect.value;
-            const componentInfo = initialComponents.find(c => c.name === baseName);
-            if (!bikeId || !baseName || !componentInfo) return;
-
-            let finalName = baseName;
-            if (componentInfo.hasSubtype) {
-                finalName = `${baseName} (${chainTypeSelect.value})`;
-            }
-
+            const name = componentTypeSelect.value;
+            const bike = state.bikes.find(b => b.id === bikeId);
+            if (!bike) return;
             const newComponent = {
-                id: generateId(),
-                name: finalName,
-                baseName: baseName,
-                wear: 0,
-                isBattery: componentInfo.isBattery || false,
-                lifespan: componentInfo.isBattery ? null : parseInt(componentLifespanInput.value, 10),
+                id: generateId(), name, maintenanceWear: 0, totalWear: 0,
+                serviceInterval: parseInt(componentServiceIntervalInput.value, 10),
+                totalLifespan: parseInt(componentTotalLifespanInput.value, 10),
                 lastServiceDate: new Date().toISOString(),
                 history: [{ date: new Date().toISOString(), notes: 'Component Added' }]
             };
-            
-            const bike = state.bikes.find(b => b.id === bikeId);
             bike.components.push(newComponent);
-            saveState();
-            render();
-            closeModal(componentModal);
+            saveState(); render(); closeModal(componentModal);
         };
-
         const handleRideFormSubmit = (e) => {
             e.preventDefault();
             const bikeId = rideBikeIdInput.value;
             const distance = parseFloat(rideDistanceInput.value);
-            const date = rideDateInput.value;
-            const conditions = rideConditionsSelect.value;
-            
             if (isNaN(distance) || distance <= 0) return;
-
             const bike = state.bikes.find(b => b.id === bikeId);
             if (!bike) return;
-
-            const multiplier = wearMultipliers[conditions];
-            const effectiveWear = distance * multiplier;
-
+            const effectiveWear = distance * wearMultipliers[rideConditionsSelect.value];
             const notifications = [];
-
-            bike.components.forEach(component => {
-                if (!component.isBattery) {
-                    component.wear += effectiveWear;
-                    const wearPercentage = (component.wear / component.lifespan) * 100;
-                    if (wearPercentage >= 100) {
-                        notifications.push({ type: 'required', name: component.name });
-                    } else if (wearPercentage > 80) {
-                        notifications.push({ type: 'soon', name: component.name });
-                    }
-                }
+            bike.components.forEach(c => {
+                c.maintenanceWear += effectiveWear;
+                c.totalWear += effectiveWear;
+                if ((c.maintenanceWear / c.serviceInterval) * 100 >= 100) notifications.push({ type: 'required', name: c.name });
             });
-            
-            if (!bike.rides) { bike.rides = []; }
-            bike.rides.push({ date, distance, conditions });
-
-            saveState();
-            render();
-            closeModal(rideModal);
-            
-            if (notifications.length > 0) {
-                showNotifications(notifications);
-            }
+            bike.rides.push({ date: rideDateInput.value, distance, conditions: rideConditionsSelect.value });
+            saveState(); render(); closeModal(rideModal);
+            if (notifications.length > 0) showNotifications(notifications);
         };
-        
         const serviceComponent = (bikeId, componentId) => {
             const bike = state.bikes.find(b => b.id === bikeId);
             const component = bike.components.find(c => c.id === componentId);
-
             const totalMileage = bike.rides ? bike.rides.reduce((acc, ride) => acc + ride.distance, 0) : 0;
-            
+            component.maintenanceWear = 0;
             component.lastServiceDate = new Date().toISOString();
-            if (!component.history) { component.history = []; }
+            if (!component.history) component.history = [];
             component.history.push({ date: new Date().toISOString(), mileageAtService: totalMileage, notes: 'Serviced' });
-            
-            if (!component.isBattery) {
-                component.wear = 0;
-            }
-            
-            saveState();
-            render();
+            saveState(); render();
         };
 
-        const showComponentDetails = (bikeId, componentId) => {
-            const bike = state.bikes.find(b => b.id === bikeId);
-            const component = bike.components.find(c => c.id === componentId);
-            
-            document.getElementById('component-details-title').textContent = `${component.name} Details`;
-            
-            // Render service history
-            const historyLog = document.getElementById('service-history-log');
-            if (component.history && component.history.length > 0) {
-                historyLog.innerHTML = component.history.slice().reverse().map(entry => 
-                    `<div class="p-2 border-b border-gray-700 text-sm">
-                        <p>Event: <span class="font-semibold">${entry.notes || 'Service'} on ${formatDate(entry.date)}</span></p>
-                    </div>`
-                ).join('');
-            } else {
-                historyLog.innerHTML = `<p class="text-sm text-gray-400">No service history yet.</p>`;
-            }
-            
-            // Chart rendering logic for non-battery components
-            const canvas = document.getElementById('wear-chart');
-            if (component.isBattery) {
-                canvas.style.display = 'none'; // Hide chart for batteries
-            } else {
-                canvas.style.display = 'block'; // Show chart for others
-                const ridesSinceLastService = (bike.rides || []).filter(ride => new Date(ride.date) >= new Date(component.lastServiceDate));
-                ridesSinceLastService.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-                const labels = [];
-                const data = [];
-                let cumulativeWear = 0;
-
-                ridesSinceLastService.forEach(ride => {
-                    const multiplier = wearMultipliers[ride.conditions];
-                    cumulativeWear += ride.distance * multiplier;
-                    labels.push(formatDate(ride.date));
-                    data.push(cumulativeWear);
-                });
-
-                const ctx = canvas.getContext('2d');
-                if (wearChart) {
-                    wearChart.destroy();
-                }
-                wearChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: 'Cumulative Wear (miles)',
-                            data: data,
-                            borderColor: 'rgb(34, 211, 238)',
-                            backgroundColor: 'rgba(34, 211, 238, 0.2)',
-                            tension: 0.1,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: { y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#d1d5db' } }, x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#d1d5db' } } },
-                        plugins: { legend: { labels: { color: '#d1d5db' } } }
-                    }
-                });
-            }
-            openModal(componentDetailsModal);
-        };
-        
-        const showNotifications = (notifications) => {
-            const content = document.getElementById('notification-content');
-            
-            const required = notifications.filter(n => n.type === 'required');
-            const soon = notifications.filter(n => n.type === 'soon');
-            
-            let html = '';
-            
-            if(required.length > 0) {
-                html += `<h3 class="font-bold text-red-500">Service Required:</h3><ul class="list-disc list-inside">${required.map(n => `<li>${n.name}</li>`).join('')}</ul>`;
-            }
-            if(soon.length > 0) {
-                html += `<h3 class="font-bold text-yellow-400 mt-2">Maintenance Due Soon:</h3><ul class="list-disc list-inside">${soon.map(n => `<li>${n.name}</li>`).join('')}</ul>`;
-            }
-            
-            content.innerHTML = html;
-            openModal(notificationModal);
-        };
-
-        // --- WEATHER FEATURE --- //
-        
+        // --- WEATHER & PREFERENCES --- //
         const handleGetWeather = async (useGeolocation = false) => {
             const forecastContainer = document.getElementById('weather-forecast');
             forecastContainer.innerHTML = `<p class="col-span-full text-gray-400">Fetching forecast...</p>`;
-
+            document.getElementById('hourly-forecast-container').classList.add('hidden');
             try {
                 let lat, lon;
                 if (useGeolocation) {
-                    const position = await new Promise((resolve, reject) => {
-                        if (!navigator.geolocation) {
-                           reject(new Error("Geolocation is not supported by your browser."));
-                        }
-                        navigator.geolocation.getCurrentPosition(resolve, reject);
-                    });
+                    const position = await new Promise((r, j) => navigator.geolocation.getCurrentPosition(r, j));
                     lat = position.coords.latitude;
                     lon = position.coords.longitude;
                 } else {
                     const city = document.getElementById('city-input').value.trim();
-                    if (!city) {
-                        forecastContainer.innerHTML = `<p class="col-span-full text-red-400">Please enter a city name.</p>`;
-                        return;
-                    }
-                    const geoResponse = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`);
-                    const geoData = await geoResponse.json();
-                    if (!geoData.results || geoData.results.length === 0) {
-                        throw new Error('City not found.');
-                    }
-                    lat = geoData.results[0].latitude;
-                    lon = geoData.results[0].longitude;
+                    if (!city) throw new Error('Please enter a city name.');
+                    const geoR = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1`);
+                    const geoD = await geoR.json();
+                    if (!geoD.results) throw new Error('City not found.');
+                    lat = geoD.results[0].latitude;
+                    lon = geoD.results[0].longitude;
                 }
-                
-                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,apparent_temperature_max,precipitation_probability_max,windspeed_10m_max&temperature_unit=fahrenheit&windspeed_unit=mph&timezone=auto`;
-                const weatherResponse = await fetch(weatherUrl);
-                const weatherData = await weatherResponse.json();
-                
-                renderWeather(weatherData);
-
+                const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,apparent_temperature_max,relativehumidity_2m_mean,precipitation_probability_max,windspeed_10m_max,sunrise,sunset&hourly=temperature_2m,apparent_temperature,weathercode&temperature_unit=fahrenheit&windspeed_unit=mph&timezone=auto&forecast_days=7`;
+                const weatherR = await fetch(weatherUrl);
+                const weatherD = await weatherR.json();
+                renderWeather(weatherD);
+                renderHourlyChart(weatherD.hourly);
             } catch (error) {
                 console.error("Weather fetch error:", error);
-                forecastContainer.innerHTML = `<p class="col-span-full text-red-400">Error: ${error.message}. Please try again.</p>`;
+                forecastContainer.innerHTML = `<p class="col-span-full text-red-400">Error: ${error.message}.</p>`;
             }
         };
 
         const renderWeather = (data) => {
             const forecastContainer = document.getElementById('weather-forecast');
             forecastContainer.innerHTML = '';
+            const prefs = state.userPreferences;
             
-            data.daily.time.forEach((day, index) => {
-                const dayOfWeek = new Date(day + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' });
-                const precip = data.daily.precipitation_probability_max[index];
-                const temp = data.daily.apparent_temperature_max[index];
-                const wind = data.daily.windspeed_10m_max[index];
+            // Clothing advice for today
+            const todayTemp = data.daily.apparent_temperature_max[0];
+            const adviceContainer = document.getElementById('clothing-advice-container');
+            const adviceText = document.getElementById('clothing-advice-text');
+            const matchingProfile = state.clothingProfiles.find(p => todayTemp >= p.minTemp && todayTemp <= p.maxTemp);
+            if (matchingProfile) {
+                adviceText.textContent = `For today's high of ${Math.round(todayTemp)}°F (${matchingProfile.name}): ${matchingProfile.items}`;
+                adviceContainer.style.borderColor = `var(--${matchingProfile.color.replace('border-','').replace('-500','')})`; // Simple way to reuse color
+                adviceContainer.classList.remove('hidden');
+            } else {
+                adviceContainer.classList.add('hidden');
+            }
 
-                let rating = 'neutral';
-                let ratingClass = 'bg-gray-700';
+            data.daily.time.forEach((day, i) => {
+                const temp = data.daily.apparent_temperature_max[i];
+                const precip = data.daily.precipitation_probability_max[i];
+                const wind = data.daily.windspeed_10m_max[i];
+                const humidity = data.daily.relativehumidity_2m_mean[i];
                 
-                if (precip < 25 && temp >= 50 && temp <= 85 && wind < 15) {
-                    rating = 'Best';
-                    ratingClass = 'bg-green-600';
+                let rating = 'neutral', ratingClass = 'bg-gray-700';
+                if (temp >= prefs.tempMin && temp <= prefs.tempMax && wind <= prefs.windMax && precip <= prefs.precipMax) {
+                    rating = 'Optimal'; ratingClass = 'bg-green-600';
+                } else if (precip > 60 || temp < 40 || temp > 95 || wind > 25) {
+                    rating = 'Poor'; ratingClass = 'bg-red-600';
                 }
-                else if (precip > 60 || temp < 40 || temp > 95 || wind > 25) {
-                    rating = 'Worst';
-                    ratingClass = 'bg-red-600';
-                }
-
+                
+                const dayProfile = state.clothingProfiles.find(p => temp >= p.minTemp && temp <= p.maxTemp);
                 const dayCard = document.createElement('div');
-                dayCard.className = `p-3 rounded-lg flex flex-col items-center justify-between ${ratingClass} transition-transform transform hover:scale-105`;
+                dayCard.className = `p-3 rounded-lg flex flex-col items-center justify-between ${ratingClass} transition-transform transform hover:scale-105 border-2 ${dayProfile ? dayProfile.color : 'border-transparent'}`;
                 dayCard.innerHTML = `
-                    <div class="font-bold text-lg">${dayOfWeek}</div>
-                    <div class="text-2xl font-light my-1">${Math.round(data.daily.temperature_2m_max[index])}°F</div>
-                    <div class="text-xs text-gray-300">💧 ${precip}%</div>
+                    <div class="font-bold text-lg">${new Date(day + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' })}</div>
+                    <div class="text-2xl font-light my-1">${Math.round(data.daily.temperature_2m_max[i])}°F</div>
+                    <div class="text-xs text-gray-300">💧 ${precip}% | 🌫️ ${Math.round(humidity)}%</div>
                     <div class="text-xs text-gray-300">💨 ${Math.round(wind)} mph</div>
-                    ${rating !== 'neutral' ? `<div class="mt-2 text-xs font-bold px-2 py-0.5 rounded-full ${rating === 'Best' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}">${rating}</div>` : ''}
+                    <div class="text-xs text-gray-300 mt-1">☀️ ${formatTime(data.daily.sunrise[i])} | 🌙 ${formatTime(data.daily.sunset[i])}</div>
+                    ${rating !== 'neutral' ? `<div class="mt-2 text-xs font-bold px-2 py-0.5 rounded-full ${rating === 'Optimal' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'}">${rating}</div>` : ''}
                 `;
                 forecastContainer.appendChild(dayCard);
             });
         };
         
-        // --- INITIALIZATION --- //
+        const renderHourlyChart = (hourlyData) => {
+            const container = document.getElementById('hourly-forecast-container');
+            container.classList.remove('hidden');
+            const ctx = document.getElementById('hourly-chart').getContext('2d');
+            
+            const now = new Date();
+            const startIndex = hourlyData.time.findIndex(t => new Date(t) > now);
+            const times = hourlyData.time.slice(startIndex, startIndex + 48).map(t => formatTime(t));
+            const temps = hourlyData.temperature_2m.slice(startIndex, startIndex + 48);
 
+            if (hourlyChart) hourlyChart.destroy();
+            hourlyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: times,
+                    datasets: [{
+                        label: 'Temperature (°F)',
+                        data: temps,
+                        borderColor: 'rgb(34, 211, 238)',
+                        backgroundColor: 'rgba(34, 211, 238, 0.2)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: false, grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#d1d5db' } }, x: { grid: { color: 'rgba(255, 255, 255, 0.1)' }, ticks: { color: '#d1d5db', maxRotation: 90, minRotation: 70 } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+        
+        const renderPreferences = () => {
+            document.getElementById('pref-temp-min').value = state.userPreferences.tempMin;
+            document.getElementById('pref-temp-max').value = state.userPreferences.tempMax;
+            document.getElementById('pref-wind-max').value = state.userPreferences.windMax;
+            document.getElementById('pref-precip-max').value = state.userPreferences.precipMax;
+            clothingProfilesList.innerHTML = '';
+            state.clothingProfiles.forEach(p => {
+                const profileDiv = document.createElement('div');
+                profileDiv.className = `p-3 bg-gray-700 rounded-lg flex flex-col md:flex-row gap-2 items-center border-l-4 ${p.color.replace('border-', 'border-l-')}`;
+                profileDiv.innerHTML = `
+                    <div class="flex-grow w-full">
+                        <input type="text" value="${p.name}" data-id="${p.id}" data-field="name" class="clothing-input w-full bg-gray-600 rounded p-1 font-bold">
+                        <p class="text-xs text-gray-400 mt-1">Temp Range: 
+                            <input type="number" value="${p.minTemp}" data-id="${p.id}" data-field="minTemp" class="clothing-input w-16 bg-gray-600 rounded p-1"> to 
+                            <input type="number" value="${p.maxTemp}" data-id="${p.id}" data-field="maxTemp" class="clothing-input w-16 bg-gray-600 rounded p-1"> °F
+                        </p>
+                        <textarea data-id="${p.id}" data-field="items" class="clothing-input w-full bg-gray-600 rounded p-1 mt-1 text-sm">${p.items}</textarea>
+                    </div>
+                    <button class="delete-profile-btn bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 rounded" data-id="${p.id}">Delete</button>`;
+                clothingProfilesList.appendChild(profileDiv);
+            });
+        };
+        const handleSavePreferences = () => {
+            state.userPreferences.tempMin = parseInt(document.getElementById('pref-temp-min').value, 10);
+            state.userPreferences.tempMax = parseInt(document.getElementById('pref-temp-max').value, 10);
+            state.userPreferences.windMax = parseInt(document.getElementById('pref-wind-max').value, 10);
+            state.userPreferences.precipMax = parseInt(document.getElementById('pref-precip-max').value, 10);
+            document.querySelectorAll('.clothing-input').forEach(input => {
+                const profile = state.clothingProfiles.find(p => p.id === input.dataset.id);
+                if(profile) {
+                    const field = input.dataset.field;
+                    profile[field] = input.type === 'number' ? parseInt(input.value, 10) : input.value;
+                }
+            });
+            saveState();
+            closeModal(preferencesModal);
+            handleGetWeather(true).catch(e => console.log("Refreshed weather with new prefs.")); // Refresh weather with new prefs
+        };
+        const handleClothingProfileEvent = (e) => {
+            if (e.target.id === 'add-clothing-profile-btn') {
+                state.clothingProfiles.push({ id: generateId(), name: 'New Profile', minTemp: 0, maxTemp: 0, items: 'Clothing items...', color: 'border-gray-500' });
+                renderPreferences();
+            } else if (e.target.classList.contains('delete-profile-btn')) {
+                state.clothingProfiles = state.clothingProfiles.filter(p => p.id !== e.target.dataset.id);
+                renderPreferences();
+            }
+        }
+        
+        // --- INITIALIZATION --- //
         const init = () => {
             loadState();
-            
-            // Set up event listeners
             document.getElementById('add-bike-btn').addEventListener('click', handleAddBikeClick);
             bikeForm.addEventListener('submit', handleBikeFormSubmit);
             bikeList.addEventListener('click', handleBikeListClick);
             componentTypeSelect.addEventListener('change', handleComponentTypeChange);
             componentForm.addEventListener('submit', handleComponentFormSubmit);
             rideForm.addEventListener('submit', handleRideFormSubmit);
-            
-            document.querySelectorAll('.modal-close-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    closeModal(btn.closest('.modal'));
-                });
-            });
-
-            // Weather listeners
             document.getElementById('get-weather-btn').addEventListener('click', () => handleGetWeather(false));
             document.getElementById('use-location-btn').addEventListener('click', () => handleGetWeather(true));
-
+            document.getElementById('preferences-btn').addEventListener('click', () => { renderPreferences(); openModal(preferencesModal); });
+            document.getElementById('save-preferences-btn').addEventListener('click', handleSavePreferences);
+            preferencesModal.addEventListener('click', handleClothingProfileEvent);
+            document.querySelectorAll('.modal-close-btn').forEach(btn => btn.addEventListener('click', () => closeModal(btn.closest('.modal'))));
             render();
-            // Try fetching weather on load if possible
-            handleGetWeather(true).catch(err => console.log("Could not auto-fetch weather on load. User interaction required."));
+            handleGetWeather(true).catch(e => console.log("Could not auto-fetch weather on load."));
         };
-
         init();
-    }); // <-- The closing brackets for the DOMContentLoaded listener
+    });
     </script> 
-
 </body>
 </html>
